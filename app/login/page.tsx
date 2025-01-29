@@ -9,7 +9,6 @@ export default function LoginPage() {
       
       <label htmlFor="password">Password:</label>
       <input id="password" name="password" type="password" required />
-
       <div className="flex gap-2">
         <button formAction={login}>Log in</button>
         <button formAction={signup}>Sign up</button>
