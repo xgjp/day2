@@ -15,30 +15,41 @@ export default function FriendSecretMessage({
   const supabase = createClient()
   const [hasAccess, setHasAccess] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
 
   useEffect(() => {
     const verifyAccess = async () => {
-      const { data, error } = await supabase
-        .from('friends')
-        .select()
-        .or(`and(user_id.eq.${currentUserId},friend_id.eq.${friendId}),and(user_id.eq.${friendId},friend_id.eq.${currentUserId})`)
-        .eq('status', 'accepted')
-        .single()
+      try {
+        const { data, error } = await supabase
+          .from('friends')
+          .select('status')
+          .or(`and(user_id.eq.${currentUserId},friend_id.eq.${friendId}),and(user_id.eq.${friendId},friend_id.eq.${currentUserId})`)
+          .eq('status', 'accepted')
+          .single()
 
-      setHasAccess(!!data && !error)
-      setLoading(false)
+        setHasAccess(!!data && !error)
+        setError('')
+      } catch (err) {
+        setError('Failed to verify access')
+        console.error(err)
+      } finally {
+        setLoading(false)
+      }
     }
 
-    verifyAccess()
+    if (currentUserId && friendId) {
+      verifyAccess()
+    }
   }, [currentUserId, friendId])
 
   if (loading) return <div>Checking permissions...</div>
+  if (error) return <div className="text-red-500">{error}</div>
   
-  if (!hasAccess) return (
+  return hasAccess ? (
+    <SecretMessage userId={friendId} allowEdit={false} />
+  ) : (
     <div className="text-red-500">
       You don't have permission to view this secret!
     </div>
   )
-
-  return <SecretMessage userId={friendId} allowEdit={false} />
 }

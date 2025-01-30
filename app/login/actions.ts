@@ -38,7 +38,25 @@ export const signup = async (formData: FormData) => {
     options: {
       emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
     }
+    
   })
+
+// In actions.ts signup function
+if (!process.env.NEXT_PUBLIC_SITE_URL) {
+  console.error('Missing NEXT_PUBLIC_SITE_URL environment variable')
+  redirect('/error?message=Missing+configuration')
+}
+
+// Add email validation
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+if (!emailRegex.test(data.email)) {
+  redirect('/error?message=Invalid+email+format')
+}
+
+// Add password validation
+if (data.password.length < 6) {
+  redirect('/error?message=Password+must+be+at+least+6+characters')
+}
 
   if (error) {
     redirect(`/error?message=${encodeURIComponent(error.message)}`)
