@@ -4,6 +4,7 @@
 import { createClient } from '@/lib/supabase/client'
 import { useEffect, useState } from 'react'
 import AddFriendForm from './AddFriendForm'
+import type { FriendRequest, FriendRelationship } from '@/types'
 
 
 export default function FriendsList({ 
@@ -14,36 +15,43 @@ export default function FriendsList({
   onFriendSelect: (friendId: string) => void
 }) {
   const supabase = createClient()
-  const [friends, setFriends] = useState<Array<{ id: string, email: string }>>([])
+  const [friends, setFriends] = useState<Array<{ id: string, email: string
+  }>>([]) 
+  const [requests, setRequests] = useState<FriendRequest[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string>('')
   const [showAddFriend, setShowAddFriend] = useState(false)
 
   useEffect(() => {
-    const loadFriends = async () => {
+    const loadData = async () => {
       try {
         if (!userId) {
           setError('No user ID provided')
           return
         }
 
-        const { data, error } = await supabase
+        // Load friend requests
+        const { data: requestsData } = await supabase
           .from('friends')
-          .select(`
-            id,
-            status,
-            user:user_id(id, email),
-            friend:friend_id(id, email)
-          `)
+          .select(`id, status, requester:user_id(email), receiver:friend_id(email)`)
+          .eq('friend_id', userId)
+          .eq('status', 'pending')
+          .returns<FriendRequest[]>()
+
+        // Load accepted friends
+        const { data: friendsData } = await supabase
+          .from('friends')
+          .select(`id, status, user:user_id(id, email), friend:friend_id(id, email)`)
           .or(`user_id.eq.${userId},friend_id.eq.${userId}`)
           .eq('status', 'accepted')
+          .returns<FriendRelationship[]>()
 
-        if (error) throw error
+        setRequests(requestsData || [])
 
-        const formattedFriends = data?.map(relationship => ({
+        const formattedFriends = (friendsData || []).map(relationship => ({
           id: relationship.user.id === userId ? relationship.friend.id : relationship.user.id,
           email: relationship.user.id === userId ? relationship.friend.email : relationship.user.email
-        })) || []
+        }))
 
         setFriends(formattedFriends)
         setError('')
@@ -55,7 +63,7 @@ export default function FriendsList({
       }
     }
 
-    loadFriends()
+    loadData()
   }, [userId])
 
   return (
