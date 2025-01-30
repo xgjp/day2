@@ -21,13 +21,23 @@ export default function AddFriendForm({ userId }: { userId: string }) {
         .from('users')
         .select('id')
         .eq('email', email)
+        .maybeSingle()
 
-      if (findError || !foundUsers?.[0]?.id) {
-        throw new Error('User not found')
-      }
+        if (findError || !foundUsers?.id) {
+          throw new Error('User with this email not found')
+        }
+    
+        const friendId = foundUsers.id
 
-      const friendId = foundUsers[0].id
+         // Check for existing requests
+    const { data: existing } = await supabase
+    .from('friends')
+    .select()
+    .or(`and(user_id.eq.${userId},friend_id.eq.${friendId}),and(user_id.eq.${friendId},friend_id.eq.${userId})`)
 
+  if (existing?.length) {
+    throw new Error('Friend request already exists')
+  }
       // Create friend request
       const { error: requestError } = await supabase
         .from('friends')
