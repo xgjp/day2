@@ -16,13 +16,13 @@ export default function PrivateLayout({
       <nav className="w-full border-b">
         <div className="max-w-4xl mx-auto p-4 flex justify-between items-center">
           <div className="flex gap-4">
-            <Link href="/private/secret-page-1" className="hover:text-blue-600">
+            <Link href="/secret-pages/secret-page-1" className="hover:text-blue-600">
               Page 1
             </Link>
-            <Link href="/private/secret-page-2" className="hover:text-blue-600">
+            <Link href="/secret-pages/secret-page-2" className="hover:text-blue-600">
               Page 2
             </Link>
-            <Link href="/private/secret-page-3" className="hover:text-blue-600">
+            <Link href="/secret-pages/secret-page-3" className="hover:text-blue-600">
               Page 3
             </Link>
           </div>

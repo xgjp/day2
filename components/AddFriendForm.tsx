@@ -16,29 +16,40 @@ export default function AddFriendForm({ userId }: { userId: string }) {
     setError('')
 
     try {
-      // Find user by email
-      const { data: foundUsers, error: findError } = await supabase
+      // Normalize email to lowercase
+      const normalizedEmail = email.toLowerCase().trim()
+      
+      // Search using case-insensitive comparison
+      const { data: foundUser, error: findError } = await supabase
         .from('users')
         .select('id')
-        .eq('email', email)
+        .ilike('email', normalizedEmail) // Case-insensitive search
         .maybeSingle()
 
-        if (findError || !foundUsers?.id) {
-          throw new Error('User with this email not found')
-        }
-    
-        const friendId = foundUsers.id
+      if (findError || !foundUser?.id) {
+        throw new Error('User with this email not found')
+      }
 
-         // Check for existing requests
-    const { data: existing } = await supabase
-    .from('friends')
-    .select()
-    .or(`and(user_id.eq.${userId},friend_id.eq.${friendId}),and(user_id.eq.${friendId},friend_id.eq.${userId})`)
+      const friendId = foundUser.id
 
-  if (existing?.length) {
-    throw new Error('Friend request already exists')
-  }
-      // Create friend request
+      // Prevent self-requests
+      if (friendId === userId) {
+        throw new Error('Cannot add yourself as a friend')
+      }
+
+      // Check existing requests
+      const { data: existing } = await supabase
+        .from('friends')
+        .select()
+        .or(
+          `and(user_id.eq.${userId},friend_id.eq.${friendId}),and(user_id.eq.${friendId},friend_id.eq.${userId})`
+        )
+
+      if (existing?.length) {
+        throw new Error('Friend request already exists')
+      }
+
+      // Create request
       const { error: requestError } = await supabase
         .from('friends')
         .insert({
@@ -51,7 +62,7 @@ export default function AddFriendForm({ userId }: { userId: string }) {
 
       alert('Friend request sent!')
       setEmail('')
-    } catch (err) {
+    } catch (err: any) {
       setError(err.message || 'Failed to send request')
     } finally {
       setLoading(false)
