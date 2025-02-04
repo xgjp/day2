@@ -1,23 +1,29 @@
+// app/page.tsx
+import Link from 'next/link';
 
-// app/layout.tsx
-import { ReactNode } from "react";
-import Link from "next/link";
-import "./globals.css";
-
-export default function Layout({ children }: { children: ReactNode }) {
+export default function HomePage() {
   return (
-    <div className="min-h-screen flex flex-col">
-      <nav className="bg-gray-800 text-white p-4 flex justify-between">
+    <div className="p-6">
+      <h1 className="text-4xl font-bold mb-4">Welcome to the NextJS & Supabase App!</h1>
+      <p className="mb-6">
+        This is the home page where you can navigate to various sections of the application.
+      </p>
+      <div className="space-y-4">
         <div>
-          <Link href="/">🏠 Home</Link>
+          <Link href="/activities">
+            <a className="text-blue-500 hover:underline text-xl">
+              🎮 Go to Activities App
+            </a>
+          </Link>
         </div>
-        <div className="flex gap-4">
-          <Link href="/secret-pages">🔒 Secret Pages</Link>
-          <Link href="/activities">🎮 Activities</Link>
+        <div>
+          <Link href="/secret-pages">
+            <a className="text-blue-500 hover:underline text-xl">
+              🔒 Go to Secret Pages (Beta)
+            </a>
+          </Link>
         </div>
-      </nav>
-      <main className="flex-1 p-4">{children}</main>
+      </div>
     </div>
   );
 }
-

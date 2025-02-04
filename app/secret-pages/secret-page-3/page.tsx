@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useEffect, useState } from 'react'
 import FriendsList from '@/components/FriendsList'
 import FriendSecretMessage from '@/components/FriendSecretMessage'
+import SecretMessage from '@/components/SecretMessage'
 
 export default function SecretPage3() {
   const supabase = createClient()
@@ -51,6 +52,7 @@ export default function SecretPage3() {
           )}
         </div>
       </div>
+      <SecretMessage userId={userId} allowEdit={true} />
     </div>
   )
 }
