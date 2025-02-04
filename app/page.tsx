@@ -9,20 +9,12 @@ export default function HomePage() {
         This is the home page where you can navigate to various sections of the application.
       </p>
       <div className="space-y-4">
-        <div>
-          <Link href="/activities">
-            <a className="text-blue-500 hover:underline text-xl">
-              🎮 Go to Activities App
-            </a>
-          </Link>
-        </div>
-        <div>
-          <Link href="/secret-pages">
-            <a className="text-blue-500 hover:underline text-xl">
-              🔒 Go to Secret Pages (Beta)
-            </a>
-          </Link>
-        </div>
+        <Link href="/activities" className="text-blue-500 hover:underline text-xl block">
+          🎮 Go to Activities App
+        </Link>
+        <Link href="/secret-pages" className="text-blue-500 hover:underline text-xl block">
+          🔒 Go to Secret Pages (Beta)
+        </Link>
       </div>
     </div>
   );

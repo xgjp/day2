@@ -21,14 +21,15 @@ export default function AddFriendForm({ userId }: { userId: string }) {
       
       // Search using case-insensitive comparison
       const { data: foundUser, error: findError } = await supabase
-        .from('profiles')
-        .select('id')
-        .ilike('email', normalizedEmail) // Case-insensitive search
-        .maybeSingle()
-
-      if (findError || !foundUser?.id) {
-        throw new Error('User with this email not found')
-      }
+      .from("users")
+      .select("id")
+      .eq("email", normalizedEmail)
+      .maybeSingle();
+    
+      if (!foundUser) {
+        alert("User not found! Ensure they have signed up.");
+        return;
+      }      
 
       const friendId = foundUser.id
 

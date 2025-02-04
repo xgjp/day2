@@ -31,17 +31,20 @@ export default function FoodReviewApp() {
   const supabase = createClient();
 
   // Fetch photos from the database, sorted by sortBy
-  const fetchPhotos = async () => {
-    const { data, error } = await supabase
-      .from("food_photos")
-      .select("*")
-      .order(sortBy, { ascending: true });
-    if (error) {
-      console.error("Error fetching photos:", error);
-    } else if (data) {
-      setPhotos(data as FoodPhoto[]);
-    }
-  };
+ const fetchPhotos = async () => {
+  const { data, error } = await supabase
+    .from("food_photos")
+    .select("*")
+    .order("uploaded_at", { ascending: false });
+
+  if (error) {
+    console.error("Error fetching photos:", error);
+  } else if (data) {
+    console.log("Fetched Photos:", data);
+    setPhotos(data);
+  }
+};
+
 
   // Fetch reviews for a specific photo
   const fetchReviews = async (photoId: number) => {
@@ -49,7 +52,7 @@ export default function FoodReviewApp() {
       .from("food_reviews")
       .select("*")
       .eq("photo_id", photoId)
-      .order("created_at", { ascending: true });
+      .order("uploaded_at", { ascending: true });
     if (error) {
       console.error("Error fetching reviews:", error);
     } else if (data) {
@@ -69,39 +72,62 @@ export default function FoodReviewApp() {
     }
   };
 
-  // Upload photo: First, upload file to Supabase Storage, then insert a record in "food_photos"
   const uploadPhoto = async () => {
-    if (!selectedFile || !newPhotoName.trim()) return;
-    // Generate a unique file path using current timestamp
-    const filePath = `${Date.now()}_${selectedFile.name}`;
-    const { data: uploadData, error: uploadError } = await supabase
-      .storage
-      .from("food-photos")
-      .upload(filePath, selectedFile);
-
-    if (uploadError) {
-      console.error("Error uploading photo:", uploadError);
+    if (!selectedFile || !newPhotoName.trim()) {
+      alert("Please select a file and enter a name.");
       return;
     }
-
-    // Get the public URL for the uploaded file
+  
+    const filePath = `${Date.now()}_${selectedFile.name}`;
+  
+    // Upload file to Supabase Storage
+    const { data: uploadData, error: uploadError } = await supabase
+      .storage
+      .from("food-photos") // Ensure correct bucket name
+      .upload(filePath, selectedFile, {
+        cacheControl: "3600", // Optional: Cache optimization
+        upsert: false, // Prevents overwriting existing files
+      });
+  
+    if (uploadError) {
+      console.error("Error uploading photo:", uploadError.message);
+      alert(`Upload failed: ${uploadError.message}`);
+      return;
+    }
+  
+    console.log("Upload successful:", uploadData);
+  
+    // Retrieve public URL
     const { data: publicUrlData } = supabase
       .storage
       .from("food-photos")
       .getPublicUrl(filePath);
-
-    // Insert photo record into the database
+  
+    if (!publicUrlData) {
+      console.error("Error getting public URL.");
+      alert("Failed to retrieve public URL.");
+      return;
+    }
+  
+    console.log("Public URL:", publicUrlData.publicUrl);
+  
+    // Insert into Database
     const { error: insertError } = await supabase
       .from("food_photos")
       .insert([{ name: newPhotoName, photo_url: publicUrlData.publicUrl }]);
+  
     if (insertError) {
-      console.error("Error inserting photo record:", insertError);
-    } else {
-      setNewPhotoName("");
-      setSelectedFile(null);
-      fetchPhotos();
+      console.error("Error inserting into database:", insertError.message);
+      alert(`Failed to save photo: ${insertError.message}`);
+      return;
     }
+  
+    console.log("Photo saved successfully.");
+    setNewPhotoName("");
+    setSelectedFile(null);
+    fetchPhotos();
   };
+  
 
   // Delete a photo: Remove from database and optionally from storage.
   const deletePhoto = async (photo: FoodPhoto) => {
