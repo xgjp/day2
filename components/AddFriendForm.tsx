@@ -21,7 +21,7 @@ export default function AddFriendForm({ userId }: { userId: string }) {
       
       // Search using case-insensitive comparison
       const { data: foundUser, error: findError } = await supabase
-        .from('users')
+        .from('profiles')
         .select('id')
         .ilike('email', normalizedEmail) // Case-insensitive search
         .maybeSingle()
