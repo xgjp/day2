@@ -24,7 +24,7 @@ export default function FoodReviewApp() {
   const [selectedPhoto, setSelectedPhoto] = useState<FoodPhoto | null>(null);
   const [newPhotoName, setNewPhotoName] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [sortBy, setSortBy] = useState<"name" | "uploaded_at">("name");
+  const [sortBy, setSortBy] = useState<"name" | "created_at">("name");
   const [reviews, setReviews] = useState<FoodReview[]>([]);
   const [newReview, setNewReview] = useState("");
 
@@ -52,7 +52,7 @@ export default function FoodReviewApp() {
       .from("food_reviews")
       .select("*")
       .eq("photo_id", photoId)
-      .order("uploaded_at", { ascending: true });
+      .order("created_at", { ascending: true });
     if (error) {
       console.error("Error fetching reviews:", error);
     } else if (data) {
@@ -219,7 +219,7 @@ export default function FoodReviewApp() {
             Sort by Name
           </button>
           <button
-            onClick={() => setSortBy("uploaded_at")}
+            onClick={() => setSortBy("created_at")}
             className="bg-green-500 text-white p-2 rounded"
           >
             Sort by Upload Date
