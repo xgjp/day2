@@ -1,35 +1,51 @@
-// app/activities/drive/page.tsx
+// app/activities/food-review/page.tsx
 'use client'
 import { useState, useEffect, ChangeEvent } from "react";
 import { createClient } from "../../../lib/supabase/client";
 
 interface StorageFile {
+  id: number;
   name: string;
   created_at?: string;
 }
 
-export default function DriveApp() {
-  const [files, setFiles] = useState<StorageFile[]>([]);
+interface Review {
+  id: number;
+  photo_id: number;
+  review_text: string;
+  created_at: string;
+}
+
+export default function FoodReviewApp() {
+  const [photos, setPhotos] = useState<StorageFile[]>([]);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [search, setSearch] = useState("");
-  const [sortBy, setSortBy] = useState<"name" | "created_at">("name");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortBy, setSortBy] = useState<"name" | "created_at">("created_at");
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [newReview, setNewReview] = useState("");
   const supabase = createClient();
 
-  const fetchFiles = async () => {
-    const { data, error } = await supabase.storage.from("photos").list("", {
-      limit: 100,
-      offset: 0,
-      sortBy: { column: sortBy, order: "asc" }
-    });
+  const fetchPhotos = async () => {
+    const { data, error } = await supabase.from("food_photos").select("*").order(sortBy, { ascending: false });
     if (error) {
-      console.error("Error fetching files:", error);
+      console.error("Error fetching photos:", error);
     } else {
-      setFiles(data || []);
+      setPhotos(data || []);
+    }
+  };
+
+  const fetchReviews = async () => {
+    const { data, error } = await supabase.from("food_reviews").select("*").order("created_at", { ascending: false });
+    if (error) {
+      console.error("Error fetching reviews:", error);
+    } else {
+      setReviews(data || []);
     }
   };
 
   useEffect(() => {
-    fetchFiles();
+    fetchPhotos();
+    fetchReviews();
   }, [sortBy]);
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -38,64 +54,104 @@ export default function DriveApp() {
     }
   };
 
-  const uploadFile = async () => {
-    if (!selectedFile) return;
+  const uploadPhoto = async () => {
+    if (!selectedFile) {
+      alert("Please select a file.");
+      return;
+    }
+
     const filePath = `${Date.now()}_${selectedFile.name}`;
-    const { data, error } = await supabase.storage.from("photos").upload(filePath, selectedFile);
+    const { data, error } = await supabase.storage.from("food").upload(filePath, selectedFile);
     if (error) {
-      console.error("Error uploading file:", error);
+      console.error("Error uploading photo:", error.message);
       alert(`Upload failed: ${error.message}`);
-    } else {
-      console.log("File uploaded:", data);
-      setSelectedFile(null);
-      fetchFiles();
+      return;
     }
+
+    const { data: photoRecord, error: photoError } = await supabase.from("food_photos").insert([{ name: filePath }]).select("id").single();
+    if (photoError) {
+      console.error("Error saving photo metadata:", photoError);
+      return;
+    }
+
+    setSelectedFile(null);
+    fetchPhotos();
   };
 
-  const deleteFile = async (fileName: string) => {
-    const { error } = await supabase.storage.from("photos").remove([fileName]);
+  const deletePhoto = async (photoId: number, fileName: string) => {
+    const { error } = await supabase.storage.from("food").remove([fileName]);
     if (error) {
-      console.error("Error deleting file:", error);
+      console.error("Error deleting photo:", error);
+      return;
+    }
+
+    await supabase.from("food_reviews").delete().eq("photo_id", photoId);
+    await supabase.from("food_photos").delete().eq("id", photoId);
+    fetchPhotos();
+    fetchReviews();
+  };
+
+  const addReview = async (photoName: string) => {
+    if (!newReview.trim()) {
+      alert("Review cannot be empty.");
+      return;
+    }
+
+    // Ensure we get the correct photo_id before inserting
+    const { data: photo, error: photoError } = await supabase.from("food_photos").select("id").eq("name", photoName).single();
+    if (photoError || !photo) {
+      console.error("Error finding photo ID:", photoError);
+      alert("Error: Photo not found.");
+      return;
+    }
+
+    const { error } = await supabase.from("food_reviews").insert([{ photo_id: photo.id, review_text: newReview }]);
+    if (error) {
+      console.error("Error adding review:", error);
+      alert("Failed to add review.");
     } else {
-      fetchFiles();
+      setNewReview("");
+      fetchReviews();
     }
   };
 
-  const filteredFiles = files.filter((file) =>
-    file.name.toLowerCase().includes(search.toLowerCase())
-  );
+  const deleteReview = async (reviewId: number) => {
+    const { error } = await supabase.from("food_reviews").delete().eq("id", reviewId);
+    if (error) {
+      console.error("Error deleting review:", error);
+    } else {
+      fetchReviews();
+    }
+  };
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-4">Google Drive "Lite"</h1>
+      <h1 className="text-2xl font-bold mb-4">Food Review App</h1>
       <div className="mb-4">
-        <input type="file" onChange={handleFileChange} className="mb-2" />
-        <button onClick={uploadFile} className="bg-blue-500 text-white p-2 rounded ml-2">
-          Upload File
-        </button>
+        <input type="file" onChange={handleFileChange} className="mb-2 block" />
+        <button onClick={uploadPhoto} className="bg-blue-500 text-white p-2 rounded">Upload Photo</button>
       </div>
-      <div className="mb-4">
-        <input
-          type="text"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search files"
-          className="border p-2 mr-2"
-        />
-        <button onClick={() => setSortBy("name")} className="bg-green-500 text-white p-2 rounded mr-2">
-          Sort by Name
-        </button>
-        <button onClick={() => setSortBy("created_at")} className="bg-green-500 text-white p-2 rounded">
-          Sort by Upload Date
-        </button>
-      </div>
-      <ul className="list-disc pl-6">
-        {filteredFiles.map((file) => (
-          <li key={file.name} className="flex items-center justify-between">
-            <span>{file.name}</span>
-            <button onClick={() => deleteFile(file.name)} className="text-red-500 ml-4">
-              Delete
-            </button>
+      <ul>
+        {photos.map((photo) => (
+          <li key={photo.id}>
+            <p className="text-sm text-gray-500">{photo.name}</p>
+            <img
+              src={supabase.storage.from("food").getPublicUrl(photo.name).data.publicUrl}
+              alt={photo.name}
+              className="w-32 h-32 object-cover"
+            />
+            <button onClick={() => deletePhoto(photo.id, photo.name)} className="text-red-500">Delete</button>
+            <textarea value={newReview} onChange={(e) => setNewReview(e.target.value)} className="border p-2" placeholder="Add a review"></textarea>
+            <button onClick={() => addReview(photo.name)} className="bg-green-500 text-white p-2 rounded">Submit Review</button>
+            <ul>
+              {reviews.filter((review) => review.photo_id === photo.id).map((review) => (
+                <li key={review.id} className="border p-2">
+                  <p className="text-sm text-gray-500">{review.created_at}</p>
+                  {review.review_text}
+                  <button onClick={() => deleteReview(review.id)} className="text-red-500 ml-2">Delete Review</button>
+                </li>
+              ))}
+            </ul>
           </li>
         ))}
       </ul>
