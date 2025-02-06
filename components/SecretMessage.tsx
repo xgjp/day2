@@ -1,7 +1,7 @@
 // components/SecretMessage.tsx
 'use client'
 
-import { createClient } from '@/lib/supabase/client'
+import { supabase } from '@/lib/supabase/supabaseClient'
 import { useEffect, useState } from 'react'
 
 export default function SecretMessage({ 
@@ -11,7 +11,6 @@ export default function SecretMessage({
   userId: string
   allowEdit?: boolean
 }) {
-  const supabase = createClient()
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(true)
 

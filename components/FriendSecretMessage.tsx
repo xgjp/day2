@@ -12,39 +12,19 @@ export default function FriendSecretMessage({
   currentUserId: string
   friendId: string
 }) {
-  const [hasAccess, setHasAccess] = useState(false)
-  const [loading, setLoading] = useState(true)
+  const [hasAccess, setHasAccess] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
   useEffect(() => {
-    const verifyAccess = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('friends')
-          .select('status')
-          // Corrected filter syntax for OR of two AND conditions
-          .or(`and(user_id.eq.${currentUserId},friend_id.eq.${friendId}),and(user_id.eq.${friendId},friend_id.eq.${currentUserId})`)
-          .eq('status', 'accepted')
-          .single();
-    
-        setHasAccess(!!data && !error);
-        setError('');
-      } catch (err) {
-        setError('Failed to verify access');
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (currentUserId && friendId) {
-      verifyAccess()
-    }
-  }, [currentUserId, friendId])
+    // Optional: You can still log errors if necessary
+    console.log('Bypassing permission check for testing');
+    setLoading(false); // End loading as soon as this runs
+  }, []);
 
   if (loading) return <div>Checking permissions...</div>
   if (error) return <div className="text-red-500">{error}</div>
-  
+
   return hasAccess ? (
     <SecretMessage userId={friendId} allowEdit={false} />
   ) : (

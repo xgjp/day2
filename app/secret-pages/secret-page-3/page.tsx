@@ -23,7 +23,9 @@ export default function SecretPage3() {
 
   const handleFriendClick = (friendId: string) => {
     setSelectedFriend(friendId);
+    console.log('Selected Friend ID:', friendId);
   };
+  
 
   if (loading) return <div>Loading...</div>
 
@@ -32,7 +34,8 @@ export default function SecretPage3() {
       <h1 className="text-2xl font-bold mb-6">Secret Page 3</h1>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <FriendsList userId={userId} />
+      <FriendsList userId={userId} onFriendSelect={handleFriendClick} />
+
         
         <div>
           <SecretMessage userId={userId} allowEdit={true} />
