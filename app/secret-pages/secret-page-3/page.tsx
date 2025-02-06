@@ -21,6 +21,10 @@ export default function SecretPage3() {
     fetchUser()
   }, [])
 
+  const handleFriendClick = (friendId: string) => {
+    setSelectedFriend(friendId);
+  };
+
   if (loading) return <div>Loading...</div>
 
   return (

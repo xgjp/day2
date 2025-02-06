@@ -11,7 +11,7 @@ export const uploadDriveFile = async (file: File) => {
    const filePath = `${user.id}/drive/${Date.now()}_${file.name}`;
 
    const { data: storageData, error: storageError } = await supabase.storage
-      .from('drive')
+      .from('photos')
       .upload(filePath, file);
 
    if (storageError) {
@@ -20,7 +20,7 @@ export const uploadDriveFile = async (file: File) => {
    }
 
    // 🔥 Ensure correct URL retrieval
-   const publicUrl = supabase.storage.from('drive').getPublicUrl(filePath).data.publicUrl;
+   const publicUrl = supabase.storage.from('photos').getPublicUrl(filePath).data.publicUrl;
 
    if (!publicUrl) {
       console.error('Error retrieving public URL.');
