@@ -1,11 +1,10 @@
 // components/FriendSecretMessage.tsx
 'use client'
 
-import SecretMessage from './SecretMessage'
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase/supabaseClient';  // Assuming you've set up the supabase client
+import SecretMessage from './SecretMessage';
 
-// Define types for the props
 interface FriendSecretMessageProps {
   currentUserId: string;
   friendId: string;
@@ -15,36 +14,38 @@ export default function FriendSecretMessage({ currentUserId, friendId }: FriendS
   const [hasAccess, setHasAccess] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  
+
   useEffect(() => {
     const checkUserSession = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+      if (userError || !user) {
         setError("Not logged in.");
         setLoading(false);
         return;
       }
 
-      // Hack: Bypass permission check when deployed on Vercel
-      const isVercel = window.location.hostname.includes('vercel.app');  // Check if we are in the Vercel environment
+      console.log("Logged in user:", user);
 
-      if (isVercel) {
-        console.log('Bypassing permission check for Vercel deployment');
-        setHasAccess(true);  // Allow access in the deployed environment
-        setLoading(false);
-        return;
-      }
-
-      // Normal permission check (only works locally or in other environments)
+      // Check if the user is the owner or is friends with the secret's owner
       try {
+        // 1. First, check if the user is the owner of the secret.
+        if (currentUserId === user.id) {
+          setHasAccess(true);  // Allow access to own secret
+          setLoading(false);
+          return;
+        }
+
+        // 2. Check if the user is friends with the owner and if the friendship status is 'accepted'
         const { data, error: fetchError } = await supabase
           .from('friends')
           .select('status')
-          .or(`and(user_id.eq.${currentUserId},friend_id.eq.${friendId}),and(user_id.eq.${friendId},friend_id.eq.${currentUserId})`)
+          .or(`and(sender_id.eq.${currentUserId},receiver_id.eq.${friendId}),and(sender_id.eq.${friendId},receiver_id.eq.${currentUserId})`)
           .eq('status', 'accepted')
           .single();
-        
+
+        console.log("Fetched data from friends table:", data);  // Log the fetched data for debugging
+
         if (fetchError || !data || data.status !== 'accepted') {
           setHasAccess(false);
           setError('You do not have access to this message.');
@@ -52,6 +53,7 @@ export default function FriendSecretMessage({ currentUserId, friendId }: FriendS
           setHasAccess(true);
         }
       } catch (err) {
+        console.log("Error during permission check:", err);
         setError('Error fetching permissions.');
       } finally {
         setLoading(false);
@@ -65,8 +67,10 @@ export default function FriendSecretMessage({ currentUserId, friendId }: FriendS
   if (error) return <div>{error}</div>;
 
   return hasAccess ? (
-    <div>Secret Message Content</div>  // Render the secret message here
+    <SecretMessage userId={friendId} allowEdit={false} />
   ) : (
-    <div>You don't have permission to view this secret message.</div>
+    <div className="text-red-500">
+      You don't have permission to view this secret!
+    </div>
   );
 }
