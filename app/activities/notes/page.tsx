@@ -1,11 +1,8 @@
 'use client'
-
-// app/activities/notes/page.tsx
 import { useState, useEffect } from "react";
 import { createClient } from "../../../lib/supabase/client";
 import ReactMarkdown from "react-markdown";
 
-// Define the Note type.
 interface Note {
   id: number;
   user_id: string;
@@ -20,57 +17,48 @@ export default function MarkdownNotesApp() {
   const [newContent, setNewContent] = useState("");
   const [editingNote, setEditingNote] = useState<Note | null>(null);
   const supabase = createClient();
-  // Fetch notes from Supabase. In a real app, you'd filter by the authenticated user.
+
   const fetchNotes = async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-  
+    const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-  
+
     const { data, error } = await supabase
       .from("notes")
       .select("*")
-      .eq("user_id", user.id)  // Filter notes by user id
+      .eq("user_id", user.id)
       .order("created_at", { ascending: false });
-  
+
     if (error) {
-      console.error("Error fetching notes:", error.message);
+      console.error("Error fetching notes:", error);
     } else {
       setNotes(data as Note[]);
     }
   };
-  
 
   useEffect(() => {
     fetchNotes();
   }, []);
 
-  // Add a new note.
   const addNote = async () => {
-    // Get the current user from Supabase Auth
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-  
+    const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       alert("You must be logged in to add a note.");
       return;
     }
-  
+
     if (!newTitle.trim() || !newContent.trim()) {
       alert("Please fill in both title and content.");
       return;
     }
-  
+
     const { error } = await supabase.from("notes").insert([
       {
-        user_id: user.id, // Use the authenticated user's id here
+        user_id: user.id,
         title: newTitle,
         content: newContent,
       },
     ]);
-  
+
     if (error) {
       console.error("Error adding note:", error.message);
       alert(`Error adding note: ${error.message}`);
@@ -81,16 +69,17 @@ export default function MarkdownNotesApp() {
     }
   };
 
-  // Update an existing note.
   const updateNote = async (note: Note) => {
     if (!note.title.trim() || !note.content.trim()) {
       alert("Please fill in both title and content.");
       return;
     }
+
     const { error } = await supabase
       .from("notes")
       .update({ title: note.title, content: note.content })
       .eq("id", note.id);
+
     if (error) {
       console.error("Error updating note:", error.message);
       alert(`Error updating note: ${error.message}`);
@@ -100,7 +89,6 @@ export default function MarkdownNotesApp() {
     }
   };
 
-  // Delete a note.
   const deleteNote = async (id: number) => {
     const { error } = await supabase.from("notes").delete().eq("id", id);
     if (error) {
@@ -115,7 +103,6 @@ export default function MarkdownNotesApp() {
     <div>
       <h1 className="text-2xl font-bold mb-4">Markdown Notes App</h1>
 
-      {/* New Note Form */}
       <div className="mb-6 border p-4">
         <h2 className="text-xl mb-2">Create New Note</h2>
         <input
@@ -137,14 +124,12 @@ export default function MarkdownNotesApp() {
         </button>
       </div>
 
-      {/* Notes List */}
       <div>
         <h2 className="text-xl mb-2">Your Notes</h2>
         {notes.length === 0 && <p>No notes available.</p>}
         {notes.map((note) => (
           <div key={note.id} className="mb-4 border p-4">
             {editingNote && editingNote.id === note.id ? (
-              // Editing mode
               <div>
                 <input
                   type="text"
@@ -176,7 +161,6 @@ export default function MarkdownNotesApp() {
                 </button>
               </div>
             ) : (
-              // Display mode
               <div>
                 <h3 className="text-lg font-semibold">{note.title}</h3>
                 <div className="mb-2">

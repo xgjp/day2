@@ -14,14 +14,26 @@ export default function TodoApp() {
   const supabase = createClient();
   // Fetch todos from Supabase
   const fetchTodos = async () => {
-
-    const { data, error } = await supabase.from('todos').select('*');
+    const { data: { user } } = await supabase.auth.getUser();
+  
+    if (!user) {
+      console.error("User not authenticated");
+      return;
+    }
+  
+    const { data, error } = await supabase
+      .from('todos')
+      .select('*')
+      .eq('user_id', user.id)  // Filter by user_id
+      .order('created_at', { ascending: false });
+  
     if (error) {
       console.error('Error fetching todos:', error);
     } else {
-      setTodos(data as Todo[]);
+      setTodos(data);
     }
   };
+  
 
   // Add a new todo
   const addTodo = async () => {
