@@ -16,23 +16,39 @@ export default function AuthButton() {
 
   const deleteAccount = async () => {
     const { data: { user } } = await supabase.auth.getUser();
-  
+    
     if (!user) {
       alert("You must be logged in to delete your account.");
       return;
     }
   
-    const { error } = await supabase.auth.admin.deleteUser(user.id);
-    
-    if (error) {
-      console.error("Error deleting account:", error);
-      alert(`Failed to delete account: ${error.message}`);
+    const response = await fetch('/api/deleteAccount', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ userId: user.id }),
+    });
+  
+    // Check if the response is empty before parsing
+    if (!response.ok) {
+      console.error("Error deleting account:", response.statusText);
+      alert(`Failed to delete account: ${response.statusText}`);
       return;
     }
   
-    alert("Account successfully deleted.");
-    window.location.href = "/"; // Redirect to home page
+    try {
+      const result = await response.json();
+      alert(result.message);
+      await supabase.auth.signOut();
+      window.location.href = "/";
+    } catch (error) {
+      console.error("Error parsing response:", error);
+      alert("Failed to parse response.");
+    }
   };
+    
+  
 
   return (
     <div>

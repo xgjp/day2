@@ -5,15 +5,14 @@ import { supabase } from '@/lib/supabase/supabaseClient'
 import { useEffect, useState } from 'react'
 
 type Friend = {
-  id: string
-  sender_id: string
-  receiver_id: string
-  status: 'pending' | 'accepted' | 'rejected'
-  created_at: string
-  user_email?: string
-  sender?: { email: string }[]
-  receiver?: { email: string }[]
-}
+  id: string;
+  sender_id: string;
+  receiver_id: string;
+  status: 'pending' | 'accepted' | 'rejected';
+  created_at: string;
+  sender?: { email: string }; // Change from array to object
+  receiver?: { email: string };
+};
 
 export default function Friends({ 
   userId, 
@@ -160,7 +159,7 @@ export default function Friends({
           <div className="space-y-2 mt-2">
             {requests.map((request) => (
               <div key={request.id} className="flex justify-between items-center p-3 border rounded">
-                <span>{request.sender?.[0]?.email}</span>
+                  <span>{request.sender?.email}</span>
                 <button
                   onClick={() => acceptRequest(request.id)}
                   className="px-3 py-1 bg-green-500 text-white rounded"
@@ -182,7 +181,7 @@ export default function Friends({
               onClick={() => onFriendSelect?.(friend.sender_id === userId ? friend.receiver_id : friend.sender_id)}
               className="w-full p-3 border rounded text-left hover:bg-gray-50"
             >
-              {friend.sender_id === userId ? friend.receiver?.[0]?.email : friend.sender?.[0]?.email}
+              {friend.sender_id === userId ? friend.receiver?.email : friend.sender?.email}
             </button>
           ))}
         </div>

@@ -39,6 +39,7 @@ export async function signup(formData: FormData) {
 
 
   if (error) {
+    console.error("Sign Up Error:", error.message)  // Log error to console
     redirect('/error')
   }
 

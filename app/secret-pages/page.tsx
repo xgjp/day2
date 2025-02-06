@@ -1,14 +1,29 @@
-import { redirect } from 'next/navigation'
+'use client';
+import { useEffect, useState } from 'react';
+import { supabase } from '@/lib/supabase/supabaseClient';
 
-import { createClient } from '@/lib/supabase/server'
+export default function SecretPage() {
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
-export default async function PrivatePage() {
-  const supabase = await createClient()
+  useEffect(() => {
+    const getUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session && session.user) {
+        setUser(session.user);
+      }
+      setLoading(false);
+    };
+    getUser();
+  }, []);
 
-  const { data, error } = await supabase.auth.getUser()
-  if (error || !data?.user) {
-    redirect('/login')
-  }
+  if (loading) return <div>Loading...</div>;
+  if (!user) return <div>Not authenticated</div>;
 
-  return <p>Hello {data.user.email}</p>
+  return (
+    <div>
+      <h1>Secret Page</h1>
+      <p>Welcome, {user.email}</p>
+    </div>
+  );
 }
