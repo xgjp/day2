@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, ChangeEvent } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { supabase } from '@/lib/supabase/supabaseClient'; // Use the singleton instance
 import { uploadFoodPhoto } from "@/app/lib/uploadFoodPhoto"; // Import upload function
 import ReviewManager from "./ReviewManager";
 
@@ -13,7 +13,6 @@ interface Photo {
   
   export default function PhotoManager({ setSelectedPhotoId }: { setSelectedPhotoId: (id: string) => void }) {
     const [photos, setPhotos] = useState<Photo[]>([]);
-    const supabase = createClient();
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
   
     const fetchPhotos = async () => {

@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, ChangeEvent } from 'react';
-import { createClient } from '@/lib/supabase/client';
+import { supabase } from '@/lib/supabase/supabaseClient';
 import { uploadDriveFile } from '../../lib/uploadDriveFile';
 
 interface DriveFile {
@@ -15,7 +15,6 @@ export default function DriveManager() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'name' | 'created_at'>('created_at');
-  const supabase = createClient();
 
   const fetchFiles = async () => {
     const { data, error } = await supabase
@@ -45,16 +44,22 @@ export default function DriveManager() {
       alert('Please select a file.');
       return;
     }
-
-    const uploadResult = await uploadDriveFile(selectedFile);
-    if (uploadResult) {
-      alert('File uploaded successfully!');
-      setSelectedFile(null);
-      fetchFiles(); // Refresh UI after upload
-    } else {
-      alert('Upload failed.');
+  
+    try {
+      const uploadResult = await uploadDriveFile(selectedFile);
+      if (uploadResult) {
+        alert('File uploaded successfully!');
+        setSelectedFile(null);
+        fetchFiles(); // Refresh UI after upload
+      } else {
+        alert('Upload failed.');
+      }
+    } catch (error) {
+      console.error('Upload error:', error);
+      alert('An error occurred during upload.');
     }
   };
+  
 
   const deleteFile = async (fileId: string, filePath: string) => {
     try {

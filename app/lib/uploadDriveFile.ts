@@ -1,44 +1,43 @@
-import { createClient } from "@/lib/supabase/client";
+import { supabase } from '@/lib/supabase/supabaseClient';
 
 export const uploadDriveFile = async (file: File) => {
-  const supabase = createClient();
-  const { data: userData, error: userError } = await supabase.auth.getUser();
+   const { data: userData, error: userError } = await supabase.auth.getUser();
+   if (userError || !userData.user) {
+      console.error('User not authenticated');
+      return null;
+   }
 
-  if (userError || !userData.user) {
-    console.error("User not authenticated");
-    return null; // ❌ Return `null` instead of an empty object
-  }
+   const user = userData.user;
+   const filePath = `${user.id}/drive/${Date.now()}_${file.name}`;
 
-  const user = userData.user;
-  const filePath = `${user.id}/drive/${Date.now()}_${file.name}`;
+   const { data: storageData, error: storageError } = await supabase.storage
+      .from('drive')
+      .upload(filePath, file);
 
-  const { data: storageData, error: storageError } = await supabase.storage
-    .from("drive")
-    .upload(filePath, file);
+   if (storageError) {
+      console.error('Error uploading file:', storageError);
+      return null;
+   }
 
-  if (storageError) {
-    console.error("Error uploading file:", storageError);
-    return null; // ❌ Return `null` instead of `{}`.
-  }
+   // 🔥 Ensure correct URL retrieval
+   const publicUrl = supabase.storage.from('drive').getPublicUrl(filePath).data.publicUrl;
 
-  const publicUrlData = supabase.storage.from("drive").getPublicUrl(storageData.path);
-  const publicUrl = publicUrlData.data.publicUrl;
+   if (!publicUrl) {
+      console.error('Error retrieving public URL.');
+      return null;
+   }
 
-  if (!publicUrl) {
-    console.error("Error retrieving file URL.");
-    return null;
-  }
+   // 🔥 Store the file in `drive_files`
+   const { error: dbError } = await supabase.from('drive_files').insert({
+      name: file.name,
+      storage_path: filePath,  // ✅ Correct file path
+      user_id: user.id,
+   });
 
-  const { error: dbError } = await supabase.from("drive_files").insert({
-    name: file.name,
-    storage_path: storageData.path,
-    user_id: user.id,
-  });
+   if (dbError) {
+      console.error('Error inserting file record:', dbError);
+      return null;
+   }
 
-  if (dbError) {
-    console.error("Error inserting file record:", dbError);
-    return null;
-  }
-
-  return { publicUrl, filePath }; // ✅ Ensure a valid response is returned.
+   return { publicUrl, filePath }; // ✅ Ensure a valid response
 };

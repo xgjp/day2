@@ -1,99 +1,192 @@
 // components/FriendsList.tsx
 'use client'
 
-import { createClient } from '@/lib/supabase/client'
+import { supabase } from '@/lib/supabase/supabaseClient'
 import { useEffect, useState } from 'react'
-import AddFriendForm from './AddFriendForm'
-import type { FriendRequest, FriendRelationship } from '@/types'
 
+type Friend = {
+  id: string
+  sender_id: string
+  receiver_id: string
+  status: 'pending' | 'accepted' | 'rejected'
+  created_at: string
+  user_email?: string
+  sender?: { email: string }[]
+  receiver?: { email: string }[]
+}
 
-export default function FriendsList({ 
-  userId,
-  onFriendSelect
-}: {
+export default function Friends({ 
+  userId, 
+  onFriendSelect 
+}: { 
   userId: string
-  onFriendSelect: (friendId: string) => void
+  onFriendSelect?: (friendId: string) => void 
 }) {
-  const supabase = createClient()
-  const [friends, setFriends] = useState<Array<{ id: string, email: string
-  }>>([]) 
-  const [requests, setRequests] = useState<FriendRequest[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string>('')
-  const [showAddFriend, setShowAddFriend] = useState(false)
+  const [friends, setFriends] = useState<Friend[]>([])
+  const [requests, setRequests] = useState<Friend[]>([])
+  const [email, setEmail] = useState('')
+  const [error, setError] = useState('')
 
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        if (!userId) {
-          setError('No user ID provided')
-          return
-        }
+  const loadFriends = async () => {
+    const { data, error } = await supabase
+      .from('friends')
+      .select(`
+        *,
+        sender:sender_id(email),
+        receiver:receiver_id(email)
+      `)
+      .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
+      .eq('status', 'accepted')
 
-        // Load friend requests
-        const { data: requestsData } = await supabase
-          .from('friends')
-          .select(`id, status, requester:user_id(email), receiver:friend_id(email)`)
-          .eq('friend_id', userId)
-          .eq('status', 'pending')
-          .returns<FriendRequest[]>()
-
-        // Load accepted friends
-        const { data: friendsData } = await supabase
-          .from('friends')
-          .select(`id, status, user:user_id(id, email), friend:friend_id(id, email)`)
-          .or(`user_id.eq.${userId},friend_id.eq.${userId}`)
-          .eq('status', 'accepted')
-          .returns<FriendRelationship[]>()
-
-        setRequests(requestsData || [])
-
-        const formattedFriends = (friendsData || []).map(relationship => ({
-          id: relationship.user.id === userId ? relationship.friend.id : relationship.user.id,
-          email: relationship.user.id === userId ? relationship.friend.email : relationship.user.email
-        }))
-
-        setFriends(formattedFriends)
-        setError('')
-      } catch (err) {
-        setError('Failed to load friends')
-        console.error(err)
-      } finally {
-        setLoading(false)
-      }
+    if (error) {
+      setError('Failed to load friends')
+      return
     }
 
-    loadData()
+    setFriends(data || [])
+  }
+
+  const loadRequests = async () => {
+    const { data, error } = await supabase
+      .from('friends')
+      .select(`
+        *,
+        sender:sender_id(email)
+      `)
+      .eq('receiver_id', userId)
+      .eq('status', 'pending')
+
+    if (error) {
+      setError('Failed to load requests')
+      return
+    }
+
+    setRequests(data || [])
+  }
+
+  const sendRequest = async (email: string) => {
+    const { data: users, error: userError } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('email', email)
+      .single()
+
+    if (userError || !users) {
+      setError('User not found')
+      return
+    }
+
+    const { error } = await supabase
+      .from('friends')
+      .insert({
+        sender_id: userId,
+        receiver_id: users.id,
+      })
+
+    if (error) {
+      setError('Failed to send request')
+      return
+    }
+
+    setEmail('')
+    loadRequests()
+  }
+
+  const acceptRequest = async (requestId: string) => {
+    const { error } = await supabase
+      .from('friends')
+      .update({ status: 'accepted' })
+      .eq('id', requestId)
+
+    if (error) {
+      setError('Failed to accept request')
+      return
+    }
+
+    loadRequests()
+    loadFriends()
+  }
+
+  useEffect(() => {
+    if (!userId) return
+  
+    loadFriends()
+    loadRequests()
+  
+    const channel = supabase
+      .channel('friends_updates')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'friends' },
+        (payload) => {
+          console.log('Friend request change detected:', payload)
+          loadFriends()
+          loadRequests()
+        }
+      )
+      .subscribe()
+  
+    return () => {
+      supabase.removeChannel(channel)
+    }
   }, [userId])
 
   return (
-    <div className="space-y-4">
-    <button
-      onClick={() => setShowAddFriend(!showAddFriend)}
-      className="bg-green-500 text-white px-4 py-2 rounded"
-    >
-      {showAddFriend ? 'Cancel' : 'Add Friend'}
-    </button>
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-lg font-medium">Add Friend</h3>
+        <div className="flex gap-2 mt-2">
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="friend@example.com"
+            className="flex-1 px-3 py-2 border rounded"
+          />
+          <button
+            onClick={() => sendRequest(email)}
+            className="px-4 py-2 bg-blue-500 text-white rounded"
+          >
+            Send Request
+          </button>
+        </div>
+      </div>
 
-    {showAddFriend && <AddFriendForm userId={userId} />}
-    <div className="space-y-2">
-      {loading && <div>Loading friends...</div>}
-      {error && <div className="text-red-500">{error}</div>}
-      
-      {friends.map(friend => (
-        <button
-          key={friend.id}
-          onClick={() => onFriendSelect(friend.id)}
-          className="block w-full p-2 text-left hover:bg-gray-100 rounded transition-colors"
-        >
-          {friend.email}
-        </button>
-      ))}
-      
-      {!loading && !error && friends.length === 0 && (
-        <div className="text-gray-500">No friends found</div>
+      {error && <p className="text-red-500">{error}</p>}
+
+      {requests.length > 0 && (
+        <div>
+          <h3 className="text-lg font-medium">Friend Requests</h3>
+          <div className="space-y-2 mt-2">
+            {requests.map((request) => (
+              <div key={request.id} className="flex justify-between items-center p-3 border rounded">
+                <span>{request.sender?.[0]?.email}</span>
+                <button
+                  onClick={() => acceptRequest(request.id)}
+                  className="px-3 py-1 bg-green-500 text-white rounded"
+                >
+                  Accept
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
+
+      <div>
+        <h3 className="text-lg font-medium">Friends</h3>
+        <div className="space-y-2 mt-2">
+          {friends.map((friend) => (
+            <button
+              key={friend.id}
+              onClick={() => onFriendSelect?.(friend.sender_id === userId ? friend.receiver_id : friend.sender_id)}
+              className="w-full p-3 border rounded text-left hover:bg-gray-50"
+            >
+              {friend.sender_id === userId ? friend.receiver?.[0]?.email : friend.sender?.[0]?.email}
+            </button>
+          ))}
+        </div>
+      </div>
     </div>
-  </div>
   )
 }

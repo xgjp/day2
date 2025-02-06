@@ -1,6 +1,6 @@
 'use client';
 import React, { useEffect, useState } from 'react';
-import { createClient } from '@/lib/supabase/client';
+import { supabase } from '@/lib/supabase/supabaseClient';
 
 interface ReviewManagerProps {
   photoId: string;
@@ -9,7 +9,6 @@ interface ReviewManagerProps {
 export default function ReviewManager({ photoId }: ReviewManagerProps) {
   const [reviews, setReviews] = useState<any[]>([]);
   const [newReview, setNewReview] = useState('');
-  const supabase = createClient();
 
   const fetchReviews = async () => {
     const { data, error } = await supabase
@@ -28,18 +27,18 @@ export default function ReviewManager({ photoId }: ReviewManagerProps) {
   }, [photoId]);
 
   const handleSubmit = async () => {
-    const { data: userData, error: userError } = await supabase.auth.getUser();
-    if (userError || !userData.user) {
-      console.error('User not authenticated');
-      return;
-    }
-    const user = userData.user;
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+if (sessionError || !sessionData.session || !sessionData.session.user) {
+  console.error('User not authenticated');
+  return;
+}
+    const user = sessionData.session.user;
     const { error } = await supabase.from('food_reviews').insert({
       photo_id: photoId,
-      content: newReview,
+      review_text: newReview, // ✅ Correct column name
       user_id: user.id,
-      rating: 5, // default rating for MVP
     });
+    
     if (error) {
       console.error('Error posting review:', error);
     } else {
