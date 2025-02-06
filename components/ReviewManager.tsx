@@ -49,32 +49,40 @@ export default function ReviewManager({ photoId }: ReviewManagerProps) {
 
   const handleSubmit = async () => {
     if (!newReview.trim()) return;
-    
+  
     setIsSubmitting(true);
     try {
+      // Fetch the current session to get the user ID
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
       if (sessionError || !session?.user) {
-        alert('Please sign in to post a review');
+        console.error('User not authenticated or session expired');
+        alert('Please log in to post a review.');
         return;
       }
-
+  
+      // Proceed with inserting the review if session exists
       const { error } = await supabase.from('food_reviews').insert({
-        photo_id: photoId,
+        photo_id: photoId,  // Ensure photoId is correct
         review_text: newReview.trim(),
-        user_id: session.user.id
+        user_id: session.user.id,  // Use the logged-in user's ID
       });
-
-      if (error) throw error;
-      
+  
+      if (error) {
+        console.error('Error posting review:', error);
+        alert('Failed to post review. Please try again.');
+        return;
+      }
+  
       setNewReview('');
-      fetchReviews();
+      fetchReviews(); // Refresh the reviews list after submitting
     } catch (error) {
       console.error('Error posting review:', error);
-      alert('Failed to post review. Please try again.');
+      alert('An unexpected error occurred while posting the review');
     } finally {
       setIsSubmitting(false);
     }
-  };
+  };   
 
   const handleDelete = async (reviewId: string) => {
     try {
